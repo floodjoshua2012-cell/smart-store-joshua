@@ -167,4 +167,30 @@ Before starting a new session, remember to do a `git pull` and keep your tools u
 
 Each time forward progress is made, remember to git add-commit-push.
 
+---
+
+## My Setup Notes (Joshua Flood)
+
+### Full Setup and Workflow
+```bash
+# 1. Create and activate virtual environment
+uv venv
+uv python pin 3.12
+uv sync --extra dev --extra docs --upgrade
+uv run pre-commit install
+source .venv/bin/activate
+
+# 2. Verify Python version
+python --version
+# Output: Python 3.12.12
+
+# 3. Run demo module to confirm environment works
+uv run python -m analytics_project.demo_module_basics
+
+# 4. Daily workflow routine
+git pull
+uv sync
+git add .
+git commit -m "Updated code or documentation"
+git push
 
