@@ -194,3 +194,114 @@ git add .
 git commit -m "Updated code or documentation"
 git push
 
+## WORKFLOW 3. Daily Workflow
+As we progress, we'll use this daily workflow often.
+
+---
+
+### 3.1 Git Pull from GitHub
+Always start with git pull to check for any changes made to the GitHub repo.
+
+```bash
+git pull
+```
+
+---
+
+### 3.2 Run Checks as You Work
+If we need additional packages, we first add them to `pyproject.toml`.
+Add `pre-commit` to `pyproject.toml` if you haven't already.
+
+- Update dependencies (for security and compatibility).
+- Clean unused cached packages to free space.
+- Use `git add .` to stage all changes.
+- Run Ruff and fix minor issues.
+- Update Pre-Commit periodically.
+- Run Pre-Commit quality checks on all code files (twice if needed, the first pass may fix things).
+- Run tests.
+
+In VS Code, open your repository, then open a terminal (**Terminal → New Terminal**) and run the following commands **one at a time** to check the code:
+
+```bash
+uv sync --extra dev --extra docs --upgrade
+uv cache clean
+git add .
+uvx ruff check --fix
+uvx pre-commit autoupdate
+uv run pre-commit run --all-files
+git add .
+uv run pytest
+```
+
+**NOTE:** The second `git add .` ensures any automatic fixes made by Ruff or Pre-Commit are included before testing or committing.
+
+---
+
+### 3.3 Build Project Documentation
+Make sure you have current doc dependencies, then build your docs, fix any errors, and serve them locally to test.
+
+```bash
+uv run mkdocs build --strict
+uv run mkdocs serve
+```
+
+After running the `serve` command, the local URL of the docs will be provided.
+To open the site, press **CMD and click** the provided link (on macOS).
+Press **CTRL + C** to stop the hosting process.
+
+---
+
+### 3.4 Execute
+This project includes demo code. Run the **data_prep** module to confirm everything is working.
+
+In the VS Code terminal, run:
+
+```bash
+uv run python -m analytics_project.data_prep
+```
+
+You should see:
+
+- Log messages printed in the terminal.
+- Data files loaded successfully.
+- Total number of DataFrames logged.
+
+If this works, your project is ready! If not, check:
+
+- Are you in the right folder? *(All commands must be run from the root project folder.)*
+- Did you run the full `uv sync --extra dev --extra docs --upgrade` command?
+- Are there any error messages? *(Ask for help and include the exact error message.)*
+
+---
+
+### 3.5 Git Add-Commit-Push to GitHub
+Anytime we make working changes to code is a good time to `git add-commit-push` to GitHub.
+
+Stage your changes with `git add`.
+Commit your changes with a useful message in quotes.
+Push your work to GitHub.
+
+```bash
+git add .
+git commit -m "describe your change in quotes"
+git push -u origin main
+```
+
+This will trigger the GitHub Actions workflow and publish your documentation via GitHub Pages.
+
+---
+
+### 3.6 Modify and Debug
+With a working version safe in GitHub, start making changes to the code.
+
+Before starting a new session:
+- Run `git pull` to make sure your local repo is up-to-date.
+- Keep your tools updated using `uv sync --extra dev --extra docs --upgrade`.
+
+Each time forward progress is made, remember to:
+
+```bash
+git add .
+git commit -m "describe your change"
+git push
+```
