@@ -192,3 +192,16 @@ Norwegian: Hei! Velkommen til Python-programmering.
 2025-10-30 19:57:INFO    AT test_utils_logger.py:65: Smoke test message
 2025-11-07 20:55:52,879 [INFO] Cleaned customers data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/customers_data_cleaned.csv
 2025-11-07 20:59:46,978 [INFO] Cleaned sales data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/sales_data_cleaned.csv
+2025-11-07 21:33:19,714 [INFO] Cleaned products data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/products_data_cleaned.csv
+2025-11-07 21:35:27,330 [INFO] Cleaned customers data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/customers_data_cleaned.csv
+2025-11-07 21:36:02,007 [INFO] Cleaned sales data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/sales_data_cleaned.csv
+2025-11-07 21:37:00,561 [INFO] Cleaned sales data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/sales_data_cleaned.csv
+2025-11-07 21:37:32,533 [INFO] Cleaned products data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/products_data_cleaned.csv
+2025-11-07 21:38:09,509 [INFO] Cleaned customers data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/customers_data_cleaned.csv
+2025-11-07 21:40:05,922 [INFO] Cleaned customers data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/customers_data_cleaned.csv
+2025-11-07 21:40:21,391 [INFO] Cleaned customers data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/customers_data_cleaned.csv
+2025-11-07 21:40:50,077 [INFO] Cleaned customers data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/customers_data_cleaned.csv
+2025-11-07 21:43:28,219 [INFO] Cleaned customers data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/customers_data_cleaned.csv
+2025-11-07 21:45:41,227 [INFO] Cleaned products data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/products_data_cleaned.csv
+2025-11-07 21:48:02,722 [INFO] Cleaned customers data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/customers_data_cleaned.csv
+2025-11-07 21:49:05,484 [INFO] Cleaned products data saved to: /Users/joshuaflood/Repos/smart-store-joshua/data/processed/products_data_cleaned.csv

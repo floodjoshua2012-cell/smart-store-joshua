@@ -94,8 +94,3 @@ ProductID,ProductName,Category,UnitPrice,RestockTime_days_num,Supplier_cat
 2092,Electronics-Add,Office,482.21,27,FreshHarvest
 2093,Home-Real,Home,755.94,26,DairyPure
 2094,Office-Fight,Clothing,493.35,25,NutriSource
-2095,Home-Seem,Office,490.79,13,AgriCo
-2096,Office-Discuss,Home,672.18,8,AgriCo
-2097,Office-Recent,Clothing,842.1,19,GreenFarm
-2098,Clothing-Trouble,Electronics,907.86,12,GreenFarm
-2099,Electronics-Several,Electronics,646.32,28,DairyPure

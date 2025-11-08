@@ -1,5 +1,4 @@
 import pandas as pd
-import pandas as pd
 import logging
 from pathlib import Path
 
@@ -32,12 +31,17 @@ def clean_sales_data():
     if "SaleDate" in df.columns:
         df["SaleDate"] = pd.to_datetime(df["SaleDate"], errors="coerce")
 
-    # Force SaleAmount to numeric before filtering
+    # ✅ Convert and filter SaleAmount
     if "SaleAmount" in df.columns:
         df["SaleAmount"] = pd.to_numeric(df["SaleAmount"], errors="coerce")
-        df = df[(df["SaleAmount"] >= 0) & (df["SaleAmount"] < 100000)]
+        df = df[(df["SaleAmount"] > 0) & (df["SaleAmount"] < 100000)]  # realistic range
 
-    # Fix discount percent — ensure it’s numeric and between 0–1
+    # Drop rows missing key IDs
+    for col in ["ProductID", "CustomerID"]:
+        if col in df.columns:
+            df = df[df[col].notna()]
+
+    # Fix discount percent
     if "DiscountPct_num" in df.columns:
         df["DiscountPct_num"] = pd.to_numeric(df["DiscountPct_num"], errors="coerce")
         df.loc[(df["DiscountPct_num"] < 0) | (df["DiscountPct_num"] > 1), "DiscountPct_num"] = None

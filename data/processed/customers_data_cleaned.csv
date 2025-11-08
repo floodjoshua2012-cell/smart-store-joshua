@@ -196,7 +196,3 @@ CustomerID,Name,Region,JoinDate,OpenInvoices_num,RetentionCategory_Cat
 1194,Casey Brown,Central,2024-02-09,5,AtRisk
 1195,Michael Lee,south-west,2023-08-22,0,AtRisk
 1196,Dr. Elizabeth Johnston DDS,North,2022-02-09,3,Recovered
-1197,William Wilson,West,2023-04-04,1,AtRisk
-1198,Chris Allen,south-west,2022-10-11,2,AtRisk
-1199,James Cooley,West,2020-07-23,6,Recovered
-1005,Jessica Mora,South,2021-08-05,8,Loyal
