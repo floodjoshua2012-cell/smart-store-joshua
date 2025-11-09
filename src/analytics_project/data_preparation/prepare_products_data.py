@@ -2,11 +2,13 @@ import pandas as pd
 import logging
 from pathlib import Path
 
+# --- PATHS ---
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RAW_DATA_PATH = REPO_ROOT / "data" / "raw" / "products_data.csv"
-PROCESSED_DATA_DIR = REPO_ROOT / "data" / "processed"
-PROCESSED_DATA_PATH = PROCESSED_DATA_DIR / "products_data_cleaned.csv"
+PREPARED_DATA_DIR = REPO_ROOT / "data" / "prepared"
+PREPARED_DATA_PATH = PREPARED_DATA_DIR / "products_prepared.csv"
 
+# --- LOGGING ---
 logging.basicConfig(
     filename=REPO_ROOT / "project.log",
     level=logging.INFO,
@@ -15,38 +17,38 @@ logging.basicConfig(
 
 
 def clean_products_data():
-    print(f"Reading: {RAW_DATA_PATH}")
+    print(f"📂 Reading: {RAW_DATA_PATH}")
+    if not RAW_DATA_PATH.exists():
+        raise FileNotFoundError(f"Missing file: {RAW_DATA_PATH}")
+
+    # Load data
     df = pd.read_csv(RAW_DATA_PATH)
     print(f"✅ Loaded successfully: {df.shape}")
 
-    # --- Cleaning steps ---
+    # --- Cleaning Steps ---
+    # 1. Remove duplicates
     df.drop_duplicates(inplace=True)
 
-    # Drop missing or invalid product IDs
-    if "ProductID" in df.columns:
-        df = df[df["ProductID"].notna()]
+    # 2. Handle missing supplier or category names
+    if "Supplier_cat" in df.columns:
+        df["Supplier_cat"] = df["Supplier_cat"].fillna("Unknown")
 
-    # Detect and clean price column
-    price_col = [c for c in df.columns if "price" in c.lower()]
-    if price_col:
-        col = price_col[0]
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-        df = df[(df[col] > 0) & (df[col] < 10000)]
+    if "RestockTime_days_num" in df.columns:
+        df["RestockTime_days_num"] = pd.to_numeric(df["RestockTime_days_num"], errors="coerce")
+        df = df[df["RestockTime_days_num"].notna() & (df["RestockTime_days_num"] > 0)]
 
-    # Remove products with missing category or supplier
-    for c in ["Category", "Supplier_cat"]:
-        if c in df.columns:
-            df = df[df[c].notna()]
+    # 3. Handle invalid prices
+    if "UnitPrice" in df.columns:
+        df["UnitPrice"] = pd.to_numeric(df["UnitPrice"], errors="coerce")
+        df = df[df["UnitPrice"].notna() & (df["UnitPrice"] > 0) & (df["UnitPrice"] < 10000)]
 
-    # Force-remove 5% of rows to simulate cleaning loss
-    drop_n = max(1, int(len(df) * 0.05))
-    df = df.iloc[:-drop_n]
+    # --- Save cleaned data ---
+    PREPARED_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    df.to_csv(PREPARED_DATA_PATH, index=False)
+    print(f"💾 Prepared file saved to: {PREPARED_DATA_PATH}")
+    print(f"✅ Final shape: {df.shape}")
 
-    PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    df.to_csv(PROCESSED_DATA_PATH, index=False)
-    print(f"✅ Cleaned file saved to: {PROCESSED_DATA_PATH}")
-    print(f"📉 Rows removed: {drop_n}")
-    logging.info(f"Cleaned products data saved to: {PROCESSED_DATA_PATH}")
+    return df
 
 
 if __name__ == "__main__":
