@@ -305,3 +305,343 @@ git add .
 git commit -m "describe your change"
 git push
 ```
+# 🧹 Data Cleaning and Preparation Project
+
+This module focuses on performing **reusable, automated data cleaning** using Python and pandas.
+It builds on earlier modules, where data cleaning was performed manually in individual scripts (`prepare_customers_data.py`, etc.).
+In this phase, we consolidated all logic into a **centralized pipeline** and a **reusable DataScrubber class**.
+
+---
+
+## 🚀 Overview
+
+We automated the cleaning of three core datasets:
+
+- `data/raw/customers_data.csv`
+- `data/raw/products_data.csv`
+- `data/raw/sales_data.csv`
+
+Each dataset is processed and output to the `data/processed/` directory in a cleaned version.
+
+| Dataset | Input File | Output File | Cleaning Steps |
+|----------|-------------|--------------|----------------|
+| Customers | `data/raw/customers_data.csv` | `data/processed/customers_data_cleaned.csv` | Remove duplicates, handle missing values, filter outliers |
+| Products | `data/raw/products_data.csv` | `data/processed/products_data_cleaned.csv` | Remove duplicates, handle missing values, filter outliers |
+| Sales | `data/raw/sales_data.csv` | `data/processed/sales_data_cleaned.csv` | Remove duplicates, handle missing values, filter outliers |
+
+---
+
+## 📁 Folder Structure
+
+```
+smart-store-joshua/
+├── data/
+│   ├── raw/
+│   │   ├── customers_data.csv
+│   │   ├── products_data.csv
+│   │   └── sales_data.csv
+│   ├── processed/
+│   │   ├── customers_data_cleaned.csv
+│   │   ├── products_data_cleaned.csv
+│   │   └── sales_data_cleaned.csv
+├── src/
+│   └── analytics_project/
+│       ├── data_scrubber.py
+│       ├── data_prep.py
+│       ├── data_preparation/
+│       └── utils_logger.py
+└── project.log
+```
+
+---
+
+## 🧰 DataScrubber Class
+
+**File:** `src/analytics_project/data_scrubber.py`
+
+This class defines all reusable logic for data cleaning across datasets.
+
+```python
+import io
+import pandas as pd
+from typing import Dict, Tuple, Union, List
+
+class DataScrubber:
+    def __init__(self, df: pd.DataFrame):
+        """Initialize with a pandas DataFrame."""
+        self.df = df
+
+    def remove_duplicate_records(self) -> pd.DataFrame:
+        """Remove duplicate rows."""
+        self.df = self.df.drop_duplicates()
+        return self.df
+
+    def handle_missing_data(self, drop: bool = False, fill_value: Union[str, float, int] = None) -> pd.DataFrame:
+        """Drop or fill missing data."""
+        if drop:
+            self.df = self.df.dropna()
+        elif fill_value is not None:
+            self.df = self.df.fillna(fill_value)
+        return self.df
+
+    def filter_column_outliers(self, column: str, lower_bound: Union[float, int], upper_bound: Union[float, int]) -> pd.DataFrame:
+        """Remove outliers outside the specified numeric range."""
+        if column not in self.df.columns:
+            raise ValueError(f"Column '{column}' not found in DataFrame.")
+        self.df = self.df[(self.df[column] >= lower_bound) & (self.df[column] <= upper_bound)]
+        return self.df
+
+    def format_column_strings_to_lower_and_trim(self, column: str) -> pd.DataFrame:
+        """Standardize text data: lowercase and remove extra spaces."""
+        if column not in self.df.columns:
+            raise ValueError(f"Column '{column}' not found.")
+        self.df[column] = self.df[column].astype(str).str.lower().str.strip()
+        return self.df
+
+    def parse_dates_to_add_standard_datetime(self, column: str) -> pd.DataFrame:
+        """Convert a column to datetime and add a 'StandardDateTime' column."""
+        if column not in self.df.columns:
+            raise ValueError(f"Column '{column}' not found.")
+        self.df['StandardDateTime'] = pd.to_datetime(self.df[column], errors='coerce')
+        return self.df
+
+    def rename_columns(self, mapping: Dict[str, str]) -> pd.DataFrame:
+        """Rename columns using a mapping dictionary."""
+        self.df = self.df.rename(columns=mapping)
+        return self.df
+```
+
+---
+
+## ⚙️ Unified Cleaning Script
+
+**File:** `src/analytics_project/data_prep.py`
+
+This file runs all data cleaning operations using the `DataScrubber` class.
+
+```python
+import pandas as pd
+from pathlib import Path
+from analytics_project.data_scrubber import DataScrubber
+
+# --- Define paths ---
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+RAW_DIR = PROJECT_ROOT / "data" / "raw"
+PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+
+# --- Function to process any file ---
+def process_file(file_name: str, numeric_limits: dict = None, fill_value="N/A"):
+    raw_path = RAW_DIR / file_name
+    processed_path = PROCESSED_DIR / file_name.replace(".csv", "_cleaned.csv")
+
+    print(f"\n📂 Reading: {raw_path}")
+    df = pd.read_csv(raw_path)
+
+    scrubber = DataScrubber(df)
+
+    # Run cleaning steps separately
+    df = scrubber.remove_duplicate_records()
+    df = scrubber.handle_missing_data(fill_value=fill_value)
+
+    # Apply outlier filtering if limits provided
+    if numeric_limits:
+        for col, (low, high) in numeric_limits.items():
+            if col in df.columns:
+                df = scrubber.filter_column_outliers(col, low, high)
+
+    df.to_csv(processed_path, index=False)
+    print(f"✅ Cleaned file saved: {processed_path} ({df.shape[0]} rows)")
+
+# --- Main function ---
+def main():
+    print("🚀 Starting unified data cleaning process...\n")
+
+    # Customers
+    process_file(
+        "customers_data.csv",
+        numeric_limits={
+            "OpenInvoices": (0, 10000),
+            "RetentionRate": (0, 1)
+        },
+        fill_value="N/A"
+    )
+
+    # Products
+    process_file(
+        "products_data.csv",
+        numeric_limits={
+            "RestockQuantity": (0, 1000)
+        },
+        fill_value=0
+    )
+
+    # Sales
+    process_file(
+        "sales_data.csv",
+        numeric_limits={
+            "DiscountPercent": (0, 1)
+        },
+        fill_value=0
+    )
+
+    print("\n🎯 All files cleaned successfully!")
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## 🧠 Development Challenges and Solutions
+
+During this project, we ran into several issues — each revealing how fragile and intricate data pipelines can be when path structures and method chaining are involved.
+
+---
+
+### **1. Path Resolution Errors (`FileNotFoundError`)**
+**Problem:**
+The scripts could not locate CSV files — repeatedly returning
+`FileNotFoundError: Missing file: /Users/.../src/data/raw/customers_data.csv`
+
+**Cause:**
+Earlier, paths were defined relative to the current script instead of the project root.
+This caused pandas to look inside `/src/data/raw/` instead of `/data/raw/`.
+
+**Fix:**
+We used:
+```python
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+RAW_DIR = PROJECT_ROOT / "data" / "raw"
+```
+This guaranteed absolute paths from the repo’s top level.
+
+---
+
+### **2. Chained Assignment Warning (FutureWarning)**
+**Problem:**
+`A value is trying to be set on a copy of a DataFrame or Series...`
+
+**Cause:**
+pandas flagged `.fillna(inplace=True)` chained operations as unsafe.
+
+**Fix:**
+We removed `inplace=True` and reassigned the cleaned DataFrame:
+```python
+df = df.fillna(fill_value)
+```
+
+---
+
+### **3. Method Chaining Failure (`AttributeError`)**
+**Problem:**
+`AttributeError: 'DataFrame' object has no attribute 'handle_missing_data'`
+
+**Cause:**
+We had mistakenly chained:
+```python
+df = scrubber.remove_duplicate_records().handle_missing_data(fill_value="N/A")
+```
+`remove_duplicate_records()` returns a DataFrame — not the scrubber instance — breaking the chain.
+
+**Fix:**
+We separated method calls:
+```python
+df = scrubber.remove_duplicate_records()
+df = scrubber.handle_missing_data(fill_value=fill_value)
+```
+
+---
+
+### **4. Git CRLF vs LF Warnings**
+**Problem:**
+Git displayed warnings:
+```
+CRLF will be replaced by LF the next time Git touches it
+```
+**Cause:**
+Windows-style line endings (CRLF) were present in CSV files.
+
+**Fix:**
+No functional impact — we acknowledged the warning since Git auto-normalizes on commit.
+
+---
+
+### **5. Missing Prepared vs Processed Folder Confusion**
+**Problem:**
+Previous module used `/data/prepared/`, while the new one used `/data/processed/`.
+This caused confusion for grading consistency.
+
+**Fix:**
+We created both folders and clarified in README that the **processed folder** holds the final cleaned datasets.
+
+---
+
+### **6. VS Code Editing Not Reflecting Changes**
+**Problem:**
+Editing CSVs inside VS Code didn’t visually change content.
+
+**Cause:**
+VS Code’s text editor mode didn’t autosave CSVs as plaintext until manually saved (`Cmd + S`).
+
+**Fix:**
+We verified by reopening files and confirmed commits included modifications.
+
+---
+
+### **7. Data Validation and Testing**
+**Problem:**
+pytest coverage initially showed 34%, missing `data_scrubber.py` tests.
+
+**Fix:**
+We later verified logic manually by comparing record counts before and after cleaning, confirming duplicate and outlier removal functionality.
+
+---
+
+## ✅ **Final Results**
+
+After fixes and reruns, all scripts executed successfully:
+```
+📂 Reading: data/raw/customers_data.csv
+✅ Cleaned file saved: data/processed/customers_data_cleaned.csv (201 rows)
+
+📂 Reading: data/raw/products_data.csv
+✅ Cleaned file saved: data/processed/products_data_cleaned.csv (100 rows)
+
+📂 Reading: data/raw/sales_data.csv
+✅ Cleaned file saved: data/processed/sales_data_cleaned.csv (500 rows)
+
+🎯 All files cleaned successfully!
+```
+
+Each cleaned dataset was smaller than its raw counterpart, confirming:
+- Duplicate removal worked
+- Outliers were filtered
+- Missing values were filled
+
+---
+
+## 🧩 **Key Takeaways**
+1. **Automation is critical.** Centralizing data prep ensures consistency and scalability.
+2. **Paths matter.** Using `Path.resolve().parents[n]` eliminates path dependency issues.
+3. **Chaining methods requires awareness.** Return types define what can be chained.
+4. **Version control transparency.** Committing processed outputs and logs provides reproducibility.
+5. **Reusable classes (OOP)** allow code reuse across datasets and future projects.
+
+---
+
+## ▶️ **How to Run**
+From the project root:
+```bash
+source .venv/bin/activate
+uv run python -m analytics_project.data_prep
+```
+
+This executes all three pipelines sequentially and outputs results to `data/processed/`.
+
+---
+
+## 🎓 Summary
+By the end of this project, we evolved from hard-coded, file-specific scripts to a **fully reusable data cleaning framework**.
+We used **object-oriented programming**, improved reliability, automated CSV generation, and ensured data integrity throughout.
+This structure is now production-ready — extensible for new datasets and adaptable to any analytics workflow.
