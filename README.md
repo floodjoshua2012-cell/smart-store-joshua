@@ -645,3 +645,102 @@ This executes all three pipelines sequentially and outputs results to `data/proc
 By the end of this project, we evolved from hard-coded, file-specific scripts to a **fully reusable data cleaning framework**.
 We used **object-oriented programming**, improved reliability, automated CSV generation, and ensured data integrity throughout.
 This structure is now production-ready — extensible for new datasets and adaptable to any analytics workflow.
+# 📦 Data Warehouse Implementation (P4)
+
+## 1. Overview
+This project implements a complete ETL pipeline that loads cleaned customer, product, and sales data into a SQLite-based analytical data warehouse. The purpose of the DW is to support business intelligence tasks such as sales analysis, customer retention reporting, forecasting, and product performance tracking. The workflow followed the standard BI pipeline: Design → Build → Load → Verify → Document.
+
+## 2. Design Choices
+
+### ⭐ Schema Style
+A Star Schema was selected because it simplifies reporting and BI queries, supports fast joins, keeps fact tables narrow for efficient aggregations, and works well for dashboards and analytics workloads. The structure includes one fact table and two dimension tables:
+
+- Fact Table: sale
+- Dimension Tables: customer, product
+
+## 3. Data Warehouse Schema
+
+### 🧩 Dimension: Customer
+| Column | Type | Description |
+|--------|------|-------------|
+| customer_id | INTEGER PRIMARY KEY | Unique identifier |
+| name | TEXT | Customer name |
+| region | TEXT | Cleaned region text |
+| join_date | TEXT | ISO date |
+| open_invoices_num | INTEGER | Clean invoice count |
+| retention_category | TEXT | Standardized retention category |
+
+### 🧩 Dimension: Product
+| Column | Type | Description |
+|--------|------|-------------|
+| product_id | INTEGER PRIMARY KEY | Unique product identifier |
+| product_name | TEXT | Name of product |
+| category | TEXT | Category of product |
+| unit_price_usd | REAL | Numeric price |
+| restock_days | INTEGER | Days to restock |
+| supplier | TEXT | Supplier info |
+
+### 🧾 Fact Table: Sale
+| Column | Type | Description |
+|--------|------|-------------|
+| sale_id | INTEGER PRIMARY KEY | Unique transaction |
+| customer_id | INTEGER | FK → customer.customer_id |
+| product_id | INTEGER | FK → product.product_id |
+| sale_amount_usd | REAL | Clean numeric sale amount |
+| sale_date | TEXT | ISO date |
+| payment_type | TEXT | Payment category |
+
+## 4. ETL Pipeline Summary
+
+### 🔄 Extract
+Raw source files stored in:
+data/raw/
+
+### 🧹 Transform
+Cleaning scripts are located in:
+src/analytics_project/data_preparation/
+
+Each script cleaned and standardized its dataset by removing duplicates, converting numeric values, cleaning categorical fields, filling missing values, fixing invalid entries, and converting date formats. Cleaned output stored in:
+data/processed/
+
+### ⬇ Load
+The main ETL script:
+src/analytics_project/dw/etl_to_dw.py
+
+This script creates the DW directory, builds schema tables, loads cleaned CSVs, inserts dimension and fact rows, enforces foreign keys, and outputs the final SQLite file:
+data_warehouse/datawarehouse.db
+
+## 5. Verification & Screenshots
+
+Screenshots from SQLite Viewer verify that all tables were created and fully populated.
+
+### ✔ Customer Table
+![alt text](image.png)
+### ✔ Product Table
+![alt text](image-1.png)
+
+### ✔ Sales Fact Table
+![alt text](image-2.png)
+
+These screenshots confirm that the DW schema is correct and populated as expected.
+
+## 6. Challenges Encountered
+- Cleaning invalid values such as “Loyal” in numeric fields
+- Fixing mismatched CSV column names compared to DW schema
+- Resolving incorrect paths due to multiple similar folders
+- Handling duplicate customer IDs
+- Interpreting VS Code Git decorations that didn’t match terminal Git
+- Ensuring insert functions mapped the correct renamed columns
+- Preventing insert crashes due to type conversion issues
+
+Despite these challenges, the DW loads cleanly end-to-end.
+
+## 7. Final Result
+A fully functioning, well-structured, SQLite-based data warehouse with:
+- A validated star schema
+- Cleaned and consistent customer and product dimensions
+- A complete, accurate sales fact table
+- A reproducible ETL pipeline
+- Documented workflow stored in GitHub
+
+This warehouse is now ready for SQL analysis, BI dashboards, and advanced analytics.
