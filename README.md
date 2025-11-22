@@ -743,4 +743,280 @@ A fully functioning, well-structured, SQLite-based data warehouse with:
 - A reproducible ETL pipeline
 - Documented workflow stored in GitHub
 
-This warehouse is now ready for SQL analysis, BI dashboards, and advanced analytics.
+# Smart Store BI & Data Warehouse Project
+MBA Data Analytics – P5 Reporting with Spark (Mac)
+
+---
+
+## Overview
+This project builds a full end to end BI pipeline:
+
+1. Collect →
+2. Clean →
+3. Load into Data Warehouse (DW) →
+4. Analyze using Spark SQL (OLAP) →
+5. Visualize →
+6. Document
+
+This README documents:
+- My operating system & tool choices
+- Schema design & DW creation
+- How I connected Spark to the DW
+- My OLAP slice, dice, drilldown queries
+- Screenshots of all results
+- Final BI insights
+
+---
+
+## Operating System & Tool Choice
+I am using **macOS**, so I completed P5 using:
+
+- **Apache Spark 4.0.1**
+- **PySpark** inside **Jupyter Notebook**
+- SQLite with **sqlite JDBC driver**
+- `uv` virtual environment
+- Python kernel: `Python (smart-store-joshua)`
+
+Windows users complete this same project using Power BI, but Spark SQL performs the same OLAP operations.
+
+---
+
+## Data Warehouse Location
+My data warehouse was created at:
+
+```
+data_warehouse/datawarehouse.db
+```
+
+It contains three tables:
+
+- **customer**
+- **product**
+- **sale** (fact table)
+
+---
+
+## Data Warehouse Schema
+### Customer Dimension
+```sql
+CREATE TABLE customer (
+    customer_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    region TEXT,
+    join_date TEXT,
+    open_invoices_num INTEGER,
+    retention_category TEXT
+);
+```
+
+### Product Dimension
+```sql
+CREATE TABLE product (
+    product_id INTEGER PRIMARY KEY,
+    product_name TEXT NOT NULL,
+    category TEXT,
+    unit_price REAL,
+    restock_time INTEGER,
+    supplier TEXT
+);
+```
+
+### Sales Fact Table
+```sql
+CREATE TABLE sale (
+    sale_id INTEGER PRIMARY KEY,
+    customer_id INTEGER,
+    product_id INTEGER,
+    sale_amount_usd REAL,
+    sale_date TEXT,
+    FOREIGN KEY (customer_id) REFERENCES customer(customer_id),
+    FOREIGN KEY (product_id) REFERENCES product(product_id)
+);
+```
+
+---
+
+## Screenshot: DW Schema (Model View)
+📸 **INSERT SCREENSHOT HERE**
+
+---
+
+## Installing Spark (Mac)
+I installed Spark via Homebrew:
+
+```bash
+brew install apache-spark
+```
+
+Verified the install:
+
+```bash
+pyspark --version
+```
+
+---
+
+## Setting Up JDBC Driver
+The SQLite JDBC driver was downloaded and placed here:
+
+```
+lib/sqlite-jdbc.jar
+```
+
+Spark must load it when creating the session.
+
+---
+
+## Creating SparkSession (working)
+```python
+from pyspark.sql import SparkSession
+
+jdbc_path = "/Users/joshuaflood/Repos/smart-store-joshua/lib/sqlite-jdbc.jar"
+
+spark = (
+    SparkSession.builder
+    .appName("SmartStoreReporting")
+    .config("spark.driver.extraClassPath", jdbc_path)
+    .getOrCreate()
+)
+spark
+```
+
+---
+
+## Reading Fact Table from SQLite
+```python
+df_sales = spark.read.format("jdbc").options(
+    url="jdbc:sqlite:data_warehouse/datawarehouse.db",
+    dbtable="sale"
+).load()
+
+df_sales.show(10)
+```
+
+📸 ![alt text](image-6.png)
+
+---
+
+# OLAP OPERATIONS
+I used Spark SQL to perform slice, dice, and drilldown operations.
+
+---
+
+## 1. SLICE (Filtering by Category)
+
+Example: Show all sales for category = "Electronics"
+
+```python
+spark.sql("""
+SELECT p.category, s.sale_amount_usd, s.sale_date
+FROM sale s
+JOIN product p ON s.product_id = p.product_id
+WHERE p.category = 'Electronics'
+""").show()
+```
+
+![alt text](image-4.png)
+
+---
+
+## 2. DICE (Multiple Filters + Grouping)
+
+Example:
+- Region = Midwest
+- Category = Household
+- Group by Customer
+
+```python
+spark.sql("""
+SELECT
+    c.region,
+    s.payment_type,
+    p.category,
+    SUM(s.sale_amount_usd) AS total_sales
+FROM sale s
+JOIN customer c ON s.customer_id = c.customer_id
+JOIN product p ON s.product_id = p.product_id
+WHERE c.region = 'South'
+  AND s.payment_type = 'Credit'
+GROUP BY
+    c.region,
+    s.payment_type,
+    p.category;
+```
+
+📸 ![alt text](image-7.png)
+
+---
+
+## 3. DRILLDOWN (Hierarchical Time Aggregation)
+
+Spark ROLLUP lets us drill down:
+
+```python
+dice_df = spark.sql("""
+SELECT c.region,
+       s.payment_type,
+       p.category,
+       SUM(s.sale_amount_usd) AS total_sales
+FROM sale s
+JOIN customer c ON s.customer_id = c.customer_id
+JOIN product p ON s.product_id = p.product_id
+WHERE c.region = 'South'
+  AND s.payment_type = 'Credit'
+GROUP BY c.region, s.payment_type, p.category
+""")
+```
+
+📸 ![alt text](image-5.png)
+
+---
+
+# Visualizations
+Using matplotlib inside the notebook:
+
+```python
+import matplotlib.pyplot as plt
+
+monthly = spark.sql("""
+SELECT
+    strftime('%Y-%m', sale_date) AS ym,
+    SUM(sale_amount_usd) AS total_sales
+FROM sale
+GROUP BY ym
+ORDER BY ym
+""").toPandas()
+
+plt.plot(monthly['ym'], monthly['total_sales'])
+plt.xticks(rotation=90)
+plt.title("Monthly Sales Trend")
+plt.tight_layout()
+plt.show()
+```
+
+![alt text](image-3.png)
+
+---
+
+# Insights & Interpretation
+Key findings from the OLAP analysis:
+
+- Customer retention category correlates heavily with sales volume.
+- Certain regions show significant category preferences.
+- Seasonality exists — drilldown shows monthly fluctuation in revenue.
+- Average ticket size aligns with product category pricing distributions.
+- The warehouse enables fast aggregation and clear BI visibility.
+
+---
+
+# Git Commands for Final Submission
+```bash
+git add .
+git commit -m "Completed P5 Spark OLAP reporting and documentation"
+git push origin main
+```
+
+---
+
+# END OF README
+This file now contains all documentation needed for P5.This warehouse is now ready for SQL analysis, BI dashboards, and advanced analytics.
