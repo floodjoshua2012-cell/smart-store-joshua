@@ -766,8 +766,8 @@ This README documents:
 - Screenshots of all results
 - Final BI insights
 
----
-
+--
+Project 5
 ## Operating System & Tool Choice
 I am using **macOS**, so I completed P5 using:
 
@@ -837,7 +837,7 @@ CREATE TABLE sale (
 ---
 
 ## Screenshot: DW Schema (Model View)
-📸 **INSERT SCREENSHOT HERE**
+![alt text](image-8.png)
 
 ---
 
@@ -978,27 +978,27 @@ Using matplotlib inside the notebook:
 ```python
 import matplotlib.pyplot as plt
 
-monthly = spark.sql("""
-SELECT
-    strftime('%Y-%m', sale_date) AS ym,
-    SUM(sale_amount_usd) AS total_sales
-FROM sale
-GROUP BY ym
-ORDER BY ym
+category_sales = spark.sql("""
+    SELECT p.category, SUM(s.sale_amount_usd) AS total_sales
+    FROM sale s
+    JOIN product p ON s.product_id = p.product_id
+    GROUP BY p.category
+    ORDER BY total_sales DESC
 """).toPandas()
 
-plt.plot(monthly['ym'], monthly['total_sales'])
-plt.xticks(rotation=90)
-plt.title("Monthly Sales Trend")
+plt.figure(figsize=(10,6))
+plt.bar(category_sales["category"], category_sales["total_sales"])
+plt.title("Total Sales by Product Category")
+plt.xlabel("Category")
+plt.ylabel("Total Sales (USD)")
 plt.tight_layout()
 plt.show()
-```
 
-![alt text](image-3.png)
+![alt text](image-9.png)
 
 ---
 
-# Insights & Interpretation
+ Insights & Interpretation
 Key findings from the OLAP analysis:
 
 - Customer retention category correlates heavily with sales volume.
@@ -1019,4 +1019,3 @@ git push origin main
 ---
 
 # END OF README
-This file now contains all documentation needed for P5.This warehouse is now ready for SQL analysis, BI dashboards, and advanced analytics.
