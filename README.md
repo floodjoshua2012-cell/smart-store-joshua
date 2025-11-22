@@ -922,10 +922,6 @@ WHERE p.category = 'Electronics'
 
 ## 2. DICE (Multiple Filters + Grouping)
 
-Example:
-- Region = Midwest
-- Category = Household
-- Group by Customer
 
 ```python
 spark.sql("""
@@ -998,14 +994,52 @@ plt.show()
 
 ---
 
- Insights & Interpretation
-Key findings from the OLAP analysis:
+## Insights and Interpretation
 
-- Customer retention category correlates heavily with sales volume.
-- Certain regions show significant category preferences.
-- Seasonality exists — drilldown shows monthly fluctuation in revenue.
-- Average ticket size aligns with product category pricing distributions.
-- The warehouse enables fast aggregation and clear BI visibility.
+### Slice Analysis: Credit Transactions
+The slice filtered the fact table to include only transactions where the payment type was Credit. This narrowed the dataset to a clean, focused subset that revealed several consistent patterns.
+
+Credit purchases occur across every product category and appear in all regions represented in the warehouse. The slice showed that Credit customers are highly active, frequently purchasing higher value items such as Electronics and Home goods. This aligns with typical retail behavior where customers rely on Credit for larger-ticket purchases.
+
+The slice also confirmed that the distribution of Credit purchases is stable and does not skew heavily toward a single region. This makes Credit an ideal dimension for deeper segmentation and indicates that any trends identified within Credit purchases may generalize well across the entire customer base.
+
+### Dice Analysis: South Region combined with Credit and Category
+The diced subset applied three constraints: region set to South, payment type restricted to Credit, and aggregation of category-level sales. This produced a clear regional consumer profile.
+
+The South region showed strong total sales across multiple categories, with Home emerging as the highest contributor, followed by Clothing and Electronics. This suggests that Southern customers paying with Credit prioritize home-related items along with apparel, reinforcing the notion that Credit usage often aligns with necessity-driven or mid to high-value purchases.
+
+The Electronics total in the diced view was meaningful as well, showing that while the South leans toward Home and Clothing, there is still consistent demand for technology products. The balanced distribution across these categories hints at a healthy, diversified sales environment in the South region.
+
+### Drilldown Analysis: Region, Payment Type, Category with ROLLUP
+The drilldown query used ROLLUP to generate a full hierarchical expansion across region, payment type, and product category. This produced several insights:
+
+- Region-level sales showed noticeable differences. South, Central, and West appeared as high-level contributors.
+- Payment types varied significantly across regions. PayPal was highly active in regions like North and Central, while GiftCard transactions showed strong totals in specific regions.
+- Category subtotals revealed large concentration around Electronics, Home and Office items.
+- The presence of NULL values at various rollup levels showed subtotal and grand total groupings, confirming that the ROLLUP output was functioning correctly.
+- Some irregularities appeared, like repeated region labels ("south-west" and "South"), caused by imperfect data cleaning in the input dataset. Despite this, the overall structure and hierarchy remained sound.
+
+Overall, the drilldown demonstrated how each dimension contributed to total sales, and how collapsing layers of the hierarchy allowed for rapid movement from detail to summary.
+
+### Product Category Sales Visualization
+The bar chart for total sales by product category highlighted a clear trend:
+
+- Home products produced the highest revenue across the entire dataset.
+- Electronics followed closely, confirming they are a major revenue driver.
+- Clothing and Office both contributed steady but smaller totals.
+
+The visualization reinforced the earlier analytical findings by visually confirming the dominance of Home and Electronics categories. It also showed that even lower-volume categories still maintain significant presence.
+
+### Final Interpretation
+Taken together, the slice, dice, drilldown and visualization reveal a consistent picture of the warehouse:
+
+- Credit is a major driver of revenue and used across all regions.
+- The South region exhibits strong spending behavior, especially on Home-related products.
+- Electronics remain a top performer, both in general sales and within Credit-based transactions.
+- The dataset contains minor inconsistencies (such as repeated region names), but Spark OLAP operations still extracted reliable insights.
+- Multi-dimensional analysis provides a deeper understanding of customer behavior, payment preferences, and product category strength.
+
+These results demonstrate the value of an OLAP-enabled warehouse for business intelligence, enabling fast exploration of large datasets at any level of granularity.
 
 ---
 
