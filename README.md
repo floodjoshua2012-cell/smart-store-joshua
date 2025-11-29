@@ -1052,4 +1052,395 @@ git push origin main
 
 ---
 
-# END OF README
+# Section 1. Business Goal
+
+The objective of this project is to design and demonstrate a complete analytical workflow that mirrors a modern retail business intelligence process. The focus is on understanding how customer behavior, product performance, and regional differences contribute to overall financial outcomes. The analysis adopts the structure of a simplified analytics cube, commonly used in enterprise environments to support strategic and operational decision making.
+
+The primary question guiding the work is:
+**How do customer groups, product categories, and geographic regions interact to influence patterns in sales and open invoices, and what insights can this provide about operational efficiency and revenue opportunities?**
+
+This question matters because retail organizations rely on clear visibility into customer mix, inventory performance, and geographic variation to optimize pricing, stocking, and service strategies. By treating the dataset as a structured cube, the analysis supports business activities such as:
+
+- Identifying high value customer segments
+- Detecting underperforming categories or regions
+- Quantifying invoice exposure for financial risk assessment
+- Supporting leaders with actionable, drillable insights for daily, weekly, and strategic planning
+
+The business purpose is not only to explore the data but also to demonstrate a scalable and reproducible pipeline that includes data cleaning, dimension creation, cube slicing, dicing, and drilldown analysis using SQL, PySpark, and visualization libraries. This mirrors the workflow of an enterprise analytics team and provides a foundation for developing automated reporting processes.
+## 2. Data Source
+
+This analysis was built on a clean, structured version of the BI course dataset provided for the customer and sales environment. The project relied on three primary tables that together describe customers, the products they purchase, and the transactions linking those two dimensions.
+
+### Customer Table
+The customer table served as the foundation for regional and behavioral attributes. Key fields used in this project included:
+- `customer_id` for joining to the sales fact table.
+- `name` for identification in drilldown results.
+- `region` for geographic segmentation.
+- `open_invoices` which was cleaned into a numeric field used in summation tasks.
+
+### Product Table
+The product table supplied product hierarchy information and supported category segmentation. Fields used included:
+- `product_id` as the key for joins.
+- `category` for grouping during drilldown and pivot aggregation.
+- `subcategory` where further breakdowns were needed.
+
+### Sale Table
+The sales fact table provided the transaction-level data needed for all aggregations. Relevant fields were:
+- `customer_id` for linking to the customer dimension.
+- `product_id` for linking to the product dimension.
+- `sale_amount` for numeric summarization.
+- `invoice_id` for counting distinct customer activity where applicable.
+
+Together, these tables formed a simple star schema. The customer and product tables functioned as dimensions, while the sale table provided the transactional facts used in pivots, drilldowns, and regional comparisons. All data was loaded into Spark dataframes and registered as SQL tables to support both SQL-based and dataframe-based workflows.
+## 3. Tools
+
+This analysis leveraged a modern data engineering and analytics stack designed to handle large-scale, relational datasets efficiently while enabling flexible exploration and visualization.
+
+### Spark (PySpark)
+PySpark served as the primary computation engine. It was used for:
+- Distributed transformation and cleansing of customer, sales, and product records.
+- Normalizing inconsistent region labels.
+- Aggregating millions of invoice-level rows into analytical summaries.
+- Performing SQL queries directly on Spark-managed DataFrames.
+
+Spark was chosen because it provides:
+- Strong SQL support
+- Fault tolerance
+- Ability to scale horizontally if needed
+- Integration with Python for seamless analytical workflows
+
+### SQL
+SQL was used within Spark’s engine to express joins, filters, and aggregations in a clear declarative style. SQL remained the most effective way to:
+- Connect the **sale**, **customer_clean**, and **product** tables
+- Perform group-by rollups for region and category metrics
+- Validate intermediate datasets with direct querying
+
+### Python (Pandas + Matplotlib)
+Python was used to convert Spark outputs into Pandas DataFrames for plotting.
+Matplotlib supported the creation of polished bar charts used in the Results section.
+This division allowed Spark to handle computation and Pandas to handle visualization.
+
+### Jupyter Notebook
+The workflow was executed in a Jupyter Notebook environment, which provided:
+- Iterative development
+- Inline display of plots
+- Versioned, cell-based structure that supports clear documentation of steps
+
+This blended toolset ensured high data processing throughput, reproducibility, and strong support for analytical storytelling.
+## 4. Workflow and Logic
+
+The analytical workflow follows a structured, multi-layer process designed to mirror real-world BI and data engineering pipelines. The goal was to clean inconsistent fields, assemble a reliable star-schema-like view, and derive aggregated insights that support strategic decision making.
+
+### 4.1 Data Standardization
+Raw customer data included inconsistent region labels such as “EAST,” “East,” “east,” and “south-west.”
+To ensure reliable grouping, region values were normalized using PySpark transformations:
+
+```python
+from pyspark.sql.functions import lower, initcap, col
+
+customer_clean = (
+    customer
+        .withColumn("region_clean", initcap(lower(col("region"))))
+)
+```
+
+This created stable dimension values such as “East,” “South,” and “South West,” which were then used throughout all downstream SQL and visualization logic.
+
+### 4.2 Dimensional Joins
+A unified analytical view was constructed by joining three core datasets:
+
+- **sale** (transaction-level fact table)
+- **customer_clean** (standardized customer dimension)
+- **product** (product dimension including category)
+
+The join logic ensured that each invoice line was enriched with customer region and product category, enabling multi-dimensional drilldowns.
+Example SQL used to assemble the analytical dataset:
+
+```sql
+SELECT
+    c.region_clean AS region,
+    p.category,
+    SUM(s.open_invoices_num) AS total_open_invoices
+FROM sale s
+JOIN customer_clean c
+    ON s.customer_id = c.customer_id
+JOIN product p
+    ON s.product_id = p.product_id
+GROUP BY region, category
+ORDER BY region, category;
+```
+
+### 4.3 Aggregation and Cube-Like Behavior
+To support slice-and-dice exploration, the dataset was built so that it can be aggregated along:
+
+- **Region** (Central, East, North, South, South West, West)
+- **Product Category** (Clothing, Electronics, Home, Office)
+- **Customer** (for drilldown views)
+
+Aggregations were computed in Spark to simulate OLAP-style cube behavior:
+
+```python
+dice_df = spark.sql("""
+    SELECT
+        region_clean AS region,
+        category,
+        SUM(open_invoices_num) AS total_open_invoices
+    FROM sale s
+    JOIN customer_clean c ON s.customer_id = c.customer_id
+    JOIN product p ON s.product_id = p.product_id
+    GROUP BY region_clean, category
+    ORDER BY region_clean, category
+""")
+```
+
+### 4.4 Pivot Transformation for Visualization
+To produce multi-category comparisons by region, the Spark output was converted to Pandas and shaped into a pivot table:
+
+```python
+dice_pd = dice_df.toPandas()
+
+pivot_df = dice_pd.pivot(
+    index="region",
+    columns="category",
+    values="total_open_invoices"
+).fillna(0)
+```
+
+This pivot table served as the foundation for bar-chart visualizations comparing invoice volume across multiple dimensions.
+
+### 4.5 Drilldown Logic
+For deeper insight, a customer-level breakdown was created.
+Analysts can select a region and product category to retrieve customer-level open invoice totals:
+
+```python
+south_electronics = (
+    drill_df
+        .filter((col("region") == "South") & (col("category") == "Electronics"))
+        .orderBy(col("total_open_invoices").desc())
+        .toPandas()
+)
+```
+
+This enables targeted identification of customers contributing significantly to outstanding balances within specific markets.
+## 5. Results
+
+The analytical pipeline produced a consolidated view of open invoice volume across regions, product categories, and customer segments. By integrating standardized customer dimensions with transaction-level sales data, the results reveal patterns that directly support operational planning and customer management decisions.
+
+### 5.1 Category Level Insights
+A high-level aggregation of total open invoices by product category showed clear volume concentration:
+
+- Home and Clothing categories generated the highest total open invoice counts.
+- Office and Electronics followed, indicating comparatively lower outstanding activity.
+
+This distribution provides an immediate understanding of where unresolved billing effort is most likely to accumulate.
+![alt text](image-10.png)
+### 5.2 Regional Patterns
+The region-by-category pivot analysis highlighted several important trends:
+
+- East consistently recorded the highest open invoice volume across all categories.
+- North and West displayed moderate activity.
+- South and South-West had substantially lower invoice volume, indicating smaller or more stable customer bases.
+
+These regional differences can inform staffing priorities, credit team workload forecasting, and targeted process reviews.
+![alt text](image-11.png)
+### 5.3 Customer-Level Drilldown
+A customer-level drilldown (for example, South region filtered to Electronics) provided visibility into individual accounts driving the majority of outstanding invoices.
+
+This micro-level view supports:
+- prioritization of outreach,
+- escalation management,
+- and targeted intervention for high-impact accounts.
+![alt text](image-12.png)
+### 5.4 Visualization Summary
+The following plot types were produced as part of the results package:
+
+- Category total bar chart (Company wide)
+- Region vs. Category grouped bar chart
+- Customer-level sorted bar chart (filtered drilldowns)
+
+Together, the visuals present a multi-layered perspective ranging from enterprise-level trends to customer-specific detail, supporting both strategic and tactical decision making.
+## 6. Suggested Business Action
+
+The analytical findings highlight clear opportunities for stronger customer management, revenue protection, and operational optimization. Based on the observed distribution of open invoices across regions and product categories, the following actions are recommended:
+
+### 6.1 Targeted Collections Strategy
+Regions such as **East** and **West** consistently show higher open-invoice totals across multiple product categories. These regions should be prioritized for:
+- Focused outbound collections campaigns
+- Automated payment reminders
+- Escalation workflows for overdue balances
+
+### 6.2 Customer Segmentation for Risk Monitoring
+High-invoice customers identified in the drill-down analysis represent potential credit exposure. Recommended actions include:
+- Assigning risk tiers based on historical invoice volume
+- Applying differentiated credit limits
+- Monitoring payment behavior more frequently in higher-risk segments
+
+### 6.3 Product Category Review
+Categories such as **Home** and **Clothing** account for the largest share of outstanding invoices. Business actions may include:
+- Reviewing pricing or discount policies that may encourage overextension
+- Assessing whether certain product lines attract lower-quality credit customers
+- Collaborating with sales to ensure proper validation of customer credit limits
+
+### 6.4 Operational Feedback Loop
+The insights should be shared with Finance and Customer Success to build a recurring, data-driven operational review:
+- Monthly reporting of regional invoice trends
+- Automated dashboards for leadership
+- Continuous data quality monitoring to avoid inconsistencies such as region naming drift
+
+### 6.5 Scalability for Future Use
+Because the analytical workflow is built on Spark and SQL, it can scale with minimal modification. The recommended operational extension includes:
+- Scheduling automated daily data ingestion
+- Publishing a live dashboard connected to the aggregated Spark output
+- Integrating alerts that trigger when regional invoice totals exceed predefined thresholds
+## 7. Challenges and Resolutions
+
+The development process surfaced several data quality, transformation, and Spark execution challenges. Each issue required structured debugging aligned with real BI and data engineering practices.
+
+### 7.1 Inconsistent Region Labels
+**Issue:**
+The customer dimension contained inconsistent region values such as `EAST`, `East`, `east`, `south-west`, and even near-duplicates like `South West` vs `South-West`.
+
+**Impact:**
+These inconsistencies produced duplicate groupings in pivots, inflated totals, and unreadable visualizations.
+
+**Resolution:**
+All region values were normalized using PySpark string transformations (`lower`, `initcap`) to produce a canonical field `region_clean`.
+This ensured accurate dimensional joins and clean aggregation logic throughout the analysis.
+
+---
+
+### 7.2 Non-Numeric Invoice Values (“A”, “Loyal”, etc.)
+**Issue:**
+The `open_invoices_num` column contained non-numeric values such as `"A"` and `"Loyal"` that caused Spark failures:
+
+```
+CAST_INVALID_INPUT: The value 'A' cannot be cast to DOUBLE
+```
+
+**Impact:**
+Spark aggregation queries aborted, preventing the dice/pivot cube from executing.
+
+**Resolution:**
+The measure was sanitized using:
+
+```python
+try_cast(col("open_invoices_num"), "double").alias("open_invoices_num")
+```
+
+All non-numeric values were coerced to `NULL`, which safely aggregated as zero.
+This matched real data-warehouse practices where malformed facts must be controlled upstream.
+
+---
+
+### 7.3 Broken Pivot Outputs from Duplicate Region Names
+**Issue:**
+After normalization, multiple visually identical region names appeared (example: `"East"` vs `"EAST"` before cleaning).
+The early pivot chart showed:
+
+- Central
+- EAST
+- East
+- east
+- south-west
+
+**Impact:**
+Charts became misleading and cluttered, producing inflated totals for some groups.
+
+**Resolution:**
+Rebuilt the pivot logic using the cleaned `region_clean` column exclusively.
+All downstream queries and visualizations were rewritten to reference the standardized dimension.
+
+---
+
+### 7.4 Runaway Spark Shuffle Warnings
+**Issue:**
+Notebook displayed many warnings similar to:
+
+```
+WARN DiskBlockObjectWriter: Error deleting temp shuffle...
+```
+
+**Impact:**
+These warnings resulted from Spark’s local shuffle directories during repeated re-runs.
+Although not fatal, they signaled excessive recomputation.
+
+**Resolution:**
+Optimized workflow by:
+
+- Caching cleaned customer dimension (`customer_clean`)
+- Avoiding unnecessary Spark SQL re-execution
+- Restarting the local Spark session after major schema changes
+
+This stabilized performance and eliminated repeated shuffle cleanup messages.
+
+---
+
+### 7.5 Exploding Customer Drilldowns
+**Issue:**
+Full drilldowns (region x category x customer) produced charts with hundreds of labels, becoming unreadable.
+
+**Impact:**
+Charts became cluttered, text overlapped, and insights were obscured.
+
+**Resolution:**
+Applied dimensional filtering:
+
+- Limit to a single region (example: `South`)
+- Limit to one category (example: `Electronics`)
+- Retain top-N customers for clarity
+
+This produced clean, MBA-quality visuals that aligned with analytical best practices.
+
+---
+
+### 7.6 Lost Dataframes in Notebook State
+**Issue:**
+Multiple errors such as:
+
+```
+NameError: 'customer_clean' is not defined
+```
+
+**Impact:**
+Variables disappeared when the notebook kernel was restarted or when earlier cells were re-run out of order.
+
+**Resolution:**
+Reconstructed the notebook so all dimension preparation (customer_clean, dice_df, drill_df) occurred in a dedicated initialization block.
+Improved reproducibility and ensured downstream transformations always had the required inputs.
+
+---
+
+### 7.7 Misleading Bar Colors in Pivot Chart
+**Issue:**
+Because inconsistent region labels existed before cleaning, the pivot chart showed repeated regions with different colors.
+
+**Impact:**
+Visualizations appeared incorrect and unprofessional.
+
+**Resolution:**
+Once region normalization was fixed, the pivot chart was rebuilt.
+Final output shows exactly six distinct regions with consistent color mapping.
+
+---
+
+### 7.8 Text Formatting Problems in README
+**Issue:**
+Markdown sections occasionally ran together due to missing blank lines.
+This damaged section hierarchy and readability.
+
+**Resolution:**
+Inserted explicit leading blank lines before each new section to enforce clear document spacing.
+
+---
+
+### Overall Takeaway
+These challenges mirror real BI engineering issues:
+
+- messy dimensions
+- malformed numeric fields
+- inconsistent categorical labels
+- Spark shuffle noise
+- visualization overload
+- notebook state loss
+
+Each was resolved through structured debugging, data standardization, and reproducible analytical design.
